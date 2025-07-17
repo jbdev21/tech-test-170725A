@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BookingListingFormRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(BookingListingFormRequest $request)
     {
         $bookings = Booking::query()
                         ->with(['customer', 'service'])    

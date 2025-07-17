@@ -25,7 +25,7 @@ class BookingController extends Controller
                             fn($query) => $query->whereDate("starts_at", ">=", $request->date_from))
                         ->when($request->filled("date_from") && $request->filled("date_to"), 
                             fn($query) => $query->whereDate("starts_at", ">=",  $request->date_from)->whereDate("ends_at", "<=", $request->date_to))
-                        ->latest()
+                        ->latest('starts_at')
                         ->paginate();
        
         return BookingResource::collection($bookings);

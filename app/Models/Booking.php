@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BookingStatus;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,17 @@ class Booking extends Model
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
     ];
+
+    /**
+     * Interact with the user's address.
+     */
+    protected function dollarFormat(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value, array $attributes) => "$". number_format($attributes['total_price_cents'] / 100, decimals: 2),
+        );
+    }
+
 
     /**
      * Get the customer that owns this booking.

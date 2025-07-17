@@ -189,7 +189,7 @@ class BookingAPITest extends TestCase
              ->assertJson(fn (AssertableJson $json) =>
                 $json->has("meta")
                     ->has("links")
-                    ->has('data', $numberOfBookings) // its should be 8 since it been create 3 items for today and 5 for tomorrow
+                    ->has('data', $numberOfBookings) 
             )->assertStatus(200);        
     }
 }

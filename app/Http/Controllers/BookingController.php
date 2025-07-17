@@ -15,7 +15,8 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
-        $bookings = Booking::query()    
+        $bookings = Booking::query()
+                        ->with(['customer', 'service'])    
                         ->when($request->filled("service_id"), 
                             fn($query) => $query->where("service_id", $request->service_id))
                         ->when($request->filled("status"), 

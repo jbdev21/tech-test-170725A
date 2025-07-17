@@ -10,6 +10,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Number;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -19,10 +20,14 @@ class BookingAPITest extends TestCase
 
     use RefreshDatabase;
 
-    public function test_booking_listing_requires_authentication(){
+    function withAuthentication(){
         Sanctum::actingAs(
             User::factory()->create()
         );
+    }
+
+    public function test_booking_listing_requires_authentication(){
+        $this->withAuthentication();
     
         $this
             ->getJson('/api/bookings')
@@ -36,15 +41,12 @@ class BookingAPITest extends TestCase
     }
 
 
-
     /**
      * A basic feature test example.
      */
     public function test_booking_can_list(): void
     {
-        Sanctum::actingAs(
-            User::factory()->create()
-        );
+        $this->withAuthentication();
 
         $response = $this->getJson('/api/bookings');
         $response->assertJson(fn (AssertableJson $json) => $json->hasAll(['data', 'meta', 'links']));
@@ -53,9 +55,7 @@ class BookingAPITest extends TestCase
 
     public function test_booking_can_list_with_data(): void
     {
-        Sanctum::actingAs(
-            User::factory()->create()
-        );
+        $this->withAuthentication();
 
         $customer = Customer::factory()->create();
         $service = Service::factory()->create();
@@ -80,11 +80,39 @@ class BookingAPITest extends TestCase
             )->assertStatus(200);
     }
 
+    public function test_booking_conditionaly_show_total_price(): void
+    {
+        $this->withAuthentication();
+
+        Booking::factory()->create([
+            'status' => BookingStatus::PENDING, // which is not confirmed
+            'total_price_cents' => 10 * 100,
+        ]);
+
+        Booking::factory()->create([
+            'status' => BookingStatus::CONFIRMED, // which is not confirmed
+            'total_price_cents' => 10 * 100,
+        ]);
+
+        $this->getJson('/api/bookings')
+             ->assertJson(fn (AssertableJson $json) =>
+                $json->has("meta")
+                    ->has("links")
+                    ->has('data.0', fn (AssertableJson $json) =>
+                            $json->missing('total_price')
+                                ->etc()
+                    )
+                    ->has('data.1', fn (AssertableJson $json) =>
+                            $json->has('total_price')
+                                ->where("total_price", Number::currency(10, "USD"))
+                                ->etc()
+                    )
+            )->assertStatus(200);
+    }
+
     public function test_booking_can_list_without_data(): void
     {
-        Sanctum::actingAs(
-            User::factory()->create()
-        );
+        $this->withAuthentication();
 
         $this->getJson('/api/bookings')
             ->assertJson(fn (AssertableJson $json) =>
@@ -95,18 +123,10 @@ class BookingAPITest extends TestCase
     }
 
     public function test_bookings_can_be_filtered_with_service_id(){
-        Sanctum::actingAs(
-            User::factory()->create()
-        );
-
-        Customer::factory()->count(10)->create();
-        Service::factory()->count(10)->create();
+        $this->withAuthentication();
 
         // make sure that it will not exceed the paginated count of data in the list
-        Booking::factory()->count(10)->create([
-            'customer_id' => fn() => Customer::inRandomOrder()->first()->id,
-            'service_id' => fn() => Service::inRandomOrder()->first()->id,
-        ]);
+        Booking::factory()->count(10)->create();
 
         $service = Service::first();
         $numberOfBookings = Booking::where("service_id", $service->id)->count();
@@ -120,17 +140,10 @@ class BookingAPITest extends TestCase
     }
 
     public function test_bookings_can_be_filtered_with_status(){
-        Sanctum::actingAs(
-            User::factory()->create()
-        );
-
-        Customer::factory()->count(10)->create();
-        Service::factory()->count(10)->create();
+        $this->withAuthentication();
 
         // make sure that it will not exceed the paginated count of data in the list
         Booking::factory()->count(10)->create([
-            'customer_id' => fn() => Customer::inRandomOrder()->first()->id,
-            'service_id' => fn() => Service::inRandomOrder()->first()->id,
             'status' => fake()->randomElement(BookingStatus::values()),
         ]);
 
@@ -146,27 +159,18 @@ class BookingAPITest extends TestCase
     }
 
     public function test_bookings_can_be_filtered_with_dates(){
-        Sanctum::actingAs(
-            User::factory()->create()
-        );
-
-        Customer::factory()->count(10)->create();
-        Service::factory()->count(10)->create();
+        $this->withAuthentication();
 
         $now = Carbon::now();
 
         // make sure that it will not exceed the paginated count of data in the list
         Booking::factory()->count(3)->create([
-            'customer_id' => fn() => Customer::inRandomOrder()->first()->id,
-            'service_id' => fn() => Service::inRandomOrder()->first()->id,
             'status' => fake()->randomElement(BookingStatus::values()),
             'starts_at' => $now
         ]);
 
         // make sure that it will not exceed the paginated count of data in the list
         Booking::factory()->count(5)->create([
-            'customer_id' => fn() => Customer::inRandomOrder()->first()->id,
-            'service_id' => fn() => Service::inRandomOrder()->first()->id,
             'status' => fake()->randomElement(BookingStatus::values()),
             'starts_at' => $now->copy()->addDays(1)
         ]);
